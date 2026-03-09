@@ -75,3 +75,14 @@ def remove_member(cellar_id: str, member_user_id: str, db: Session = Depends(get
     crud.remove_member(db, cellar_id, member_user_id)
     # Retornar confirmación de éxito
     return {"ok": True}
+
+@router.delete("/{cellar_id}", response_model=dict)
+def delete_cellar(cellar_id: str, db: Session = Depends(get_db), user=Depends(get_current_user)):
+    role = crud.get_user_role_in_cellar(db, cellar_id, str(user.user_id))
+
+    if role != "OWNER":
+        raise HTTPException(status_code=403, detail="Only OWNER can delete cellar")
+
+    crud.delete_cellar(db, cellar_id)
+
+    return {"ok": True}

@@ -167,3 +167,24 @@ def remove_member(db: Session, cellar_id: str, user_id: str):
         {"c": cellar_id, "u": user_id},
     )
     db.commit()
+
+
+def delete_cellar(db: Session, cellar_id: str) -> bool:
+    db.execute(
+        text("""
+            DELETE FROM cellar_members
+            WHERE cellar_id = :c
+        """),
+        {"c": cellar_id},
+    )
+
+    result = db.execute(
+        text("""
+            DELETE FROM cellars
+            WHERE cellar_id = :c
+        """),
+        {"c": cellar_id},
+    )
+
+    db.commit()
+    return result.rowcount > 0

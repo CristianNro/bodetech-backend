@@ -63,4 +63,4 @@ if __name__ == "__main__":
     import uvicorn
     logger.info("Iniciando servidor...")
     # Iniciar servidor en localhost:8000 con logs en debug
-    uvicorn.run(app, host="127.0.0.1", port=8000, log_level="debug")
+    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="debug")
