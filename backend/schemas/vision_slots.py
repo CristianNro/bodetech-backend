@@ -14,6 +14,7 @@ class BatchSlotInput(BaseModel):
     temp_id: Optional[str] = None
     slot_index: Optional[int] = None
     bbox: BBoxInput
+    label: Optional[str] = None
     status: str = "empty"
     is_active: bool = True
     is_user_corrected: bool = True

@@ -16,6 +16,10 @@ class Settings(BaseSettings):
     JWT_REFRESH_DAYS: int = 30
     # Directorio para almacenar archivos subidos
     UPLOAD_DIR: str = "./uploads"
+    # API key de Anthropic para análisis de etiquetas con Claude Vision
+    ANTHROPIC_API_KEY: str = ""
+    # API key de Tavily para verificación de datos de vinos en la web
+    TAVILY_API_KEY: str = ""
 
 # Instancia global de configuración
 settings = Settings()

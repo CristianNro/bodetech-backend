@@ -66,6 +66,40 @@ class PutIn(BaseModel):
 class TakeIn(BaseModel):
     slot_code: str  # Código de ubicación de la botella a remover
 
+# Esquemas para gestión de vinos
+
+class WineCreateIn(BaseModel):
+    name: Optional[str] = Field(None, max_length=150)
+    winery: str = Field(min_length=1, max_length=100)
+    varietal: str = Field(min_length=1, max_length=80)
+    vintage: Optional[int] = None
+    region: Optional[str] = Field(None, max_length=100)
+    notes: Optional[str] = None
+    quantity: int = Field(default=0, ge=0)
+
+class WineUpdateIn(BaseModel):
+    name: Optional[str] = Field(None, max_length=150)
+    winery: Optional[str] = Field(None, max_length=100)
+    varietal: Optional[str] = Field(None, max_length=80)
+    vintage: Optional[int] = None
+    region: Optional[str] = Field(None, max_length=100)
+    notes: Optional[str] = None
+    quantity: Optional[int] = Field(None, ge=0)
+
+class WineOut(BaseModel):
+    wine_id: str
+    user_id: str
+    name: Optional[str]
+    winery: str
+    varietal: str
+    vintage: Optional[int]
+    region: Optional[str]
+    notes: Optional[str]
+    quantity: int
+    created_at: str
+    updated_at: str
+
+
 # Esquemas para comunicación con chat
 
 # Esquema para entrada de mensaje de chat

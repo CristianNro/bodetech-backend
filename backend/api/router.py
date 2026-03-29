@@ -6,6 +6,7 @@ from backend.api.routers.vision import router as vision_router
 from backend.api.routers.inventory import router as inventory_router
 from backend.api.routers.chat import router as chat_router
 from backend.api.routers.valuation import router as valuation_router
+from backend.api.routers.wines import router as wines_router
 
 # Crear router principal de la API
 api_router = APIRouter()
@@ -21,3 +22,5 @@ api_router.include_router(inventory_router)
 api_router.include_router(chat_router)
 # Incluir router de valuación de bodegas
 api_router.include_router(valuation_router)
+# Incluir router de vinos
+api_router.include_router(wines_router)

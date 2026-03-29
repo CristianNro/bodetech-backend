@@ -103,6 +103,7 @@ async def wall_analyze(
             confidence=slot.get("confidence"),
             is_active=True,
             is_user_corrected=slot.get("is_user_corrected", False),
+            commit=False,
         )
         created_slots.append(created)
 
@@ -247,6 +248,7 @@ def save_wall_slots_batch(
                 "slot_id": item.slot_id,
                 "temp_id": item.temp_id,
                 "slot_index": item.slot_index,
+                "label": item.label,
                 "bbox": {
                     "x": item.bbox.x,
                     "y": item.bbox.y,
@@ -259,9 +261,8 @@ def save_wall_slots_batch(
             }
         )
 
+    # normalize → validate → write (order matters)
     normalized_slots = normalize_slot_indexes(raw_slots)
-    for slot in payload.slots:
-        print(slot)
 
     try:
         validate_slots_batch(
@@ -288,21 +289,21 @@ def save_wall_slots_batch(
             center_x, center_y = bbox_center(bbox)
 
             if slot["slot_id"]:
-                crud.update_slot_geometry_with_commit_control(
+                crud.update_slot_geometry(
                     db=db,
                     slot_id=slot["slot_id"],
                     polygon_json=polygon,
                     bbox_json=bbox,
                     center_x=center_x,
                     center_y=center_y,
-                    label=None,
+                    label=slot["label"],
                     status=slot["status"],
                     is_active=slot["is_active"],
                     is_user_corrected=slot["is_user_corrected"],
                     commit=False,
                 )
             else:
-                crud.create_cellar_slot_with_commit_control(
+                crud.create_cellar_slot(
                     db=db,
                     cellar_id=cellar_id,
                     image_id=image_id,
@@ -311,7 +312,7 @@ def save_wall_slots_batch(
                     bbox_json=bbox,
                     center_x=center_x,
                     center_y=center_y,
-                    label=None,
+                    label=slot["label"],
                     status=slot["status"],
                     confidence=1.0,
                     is_active=slot["is_active"],

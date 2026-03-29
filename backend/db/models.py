@@ -220,3 +220,37 @@ class CellarSlot(Base):
         server_default=func.now(),
         onupdate=func.now(),
     )
+
+
+class Wine(Base):
+    __tablename__ = "wines"
+
+    wine_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.user_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    name: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    winery: Mapped[str] = mapped_column(String(100), nullable=False)
+    varietal: Mapped[str] = mapped_column(String(80), nullable=False)
+    vintage: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    region: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    quantity: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    created_at: Mapped[DateTime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    updated_at: Mapped[DateTime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )

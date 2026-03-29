@@ -450,6 +450,7 @@ def create_cellar_slot(
     confidence: float | None = None,
     is_active: bool = True,
     is_user_corrected: bool = False,
+    commit: bool = True,
 ):
     slot_id = str(uuid.uuid4())
 
@@ -506,6 +507,9 @@ def create_cellar_slot(
             "is_user_corrected": is_user_corrected,
         },
     ).fetchone()
+
+    if commit:
+        db.commit()
 
     return _map_slot_row(row)
 
@@ -574,151 +578,6 @@ def update_slot_geometry(
     bbox_json=None,
     label: str | None = None,
     status: str | None = None,
-):
-    current = get_slot_by_id(db, slot_id)
-    if not current:
-        return None
-
-    new_polygon = polygon_json if polygon_json is not None else current["polygon_json"]
-    new_bbox = bbox_json if bbox_json is not None else current["bbox_json"]
-    new_label = label if label is not None else current["label"]
-    new_status = status if status is not None else current["status"]
-
-    row = db.execute(
-        text("""
-            UPDATE cellar_slots
-            SET polygon_json = CAST(:polygon_json AS JSONB),
-                bbox_json = CAST(:bbox_json AS JSONB),
-                label = :label,
-                status = :status,
-                is_user_corrected = TRUE,
-                updated_at = NOW()
-            WHERE slot_id = :slot_id
-            RETURNING slot_id, cellar_id, image_id, slot_index, label,
-                      polygon_json, bbox_json, center_x, center_y,
-                      status, confidence, is_active, is_user_corrected,
-                      created_at, updated_at
-        """),
-        {
-            "slot_id": slot_id,
-            "polygon_json": json.dumps(new_polygon),
-            "bbox_json": json.dumps(new_bbox),
-            "label": new_label,
-            "status": new_status,
-        },
-    ).fetchone()
-
-    db.commit()
-    return _map_slot_row(row)
-
-
-def delete_slots_by_ids(db: Session, image_id: str, slot_ids: list[str], commit: bool = True):
-    if not slot_ids:
-        return 0
-
-    result = db.execute(
-        text("""
-            DELETE FROM cellar_slots
-            WHERE image_id = :image_id
-              AND slot_id = ANY(:slot_ids)
-        """),
-        {
-            "image_id": image_id,
-            "slot_ids": slot_ids,
-        },
-    )
-
-    if commit:
-        db.commit()
-
-    return result.rowcount
-
-
-def create_cellar_slot_with_commit_control(
-    db: Session,
-    cellar_id: str,
-    image_id: str,
-    slot_index: int,
-    polygon_json,
-    bbox_json,
-    center_x: float | None = None,
-    center_y: float | None = None,
-    label: str | None = None,
-    status: str = "unknown",
-    confidence: float | None = None,
-    is_active: bool = True,
-    is_user_corrected: bool = False,
-    commit: bool = True,
-):
-    slot_id = str(uuid.uuid4())
-
-    row = db.execute(
-        text("""
-            INSERT INTO cellar_slots(
-                slot_id,
-                cellar_id,
-                image_id,
-                slot_index,
-                label,
-                polygon_json,
-                bbox_json,
-                center_x,
-                center_y,
-                status,
-                confidence,
-                is_active,
-                is_user_corrected
-            )
-            VALUES (
-                :slot_id,
-                :cellar_id,
-                :image_id,
-                :slot_index,
-                :label,
-                CAST(:polygon_json AS JSONB),
-                CAST(:bbox_json AS JSONB),
-                :center_x,
-                :center_y,
-                :status,
-                :confidence,
-                :is_active,
-                :is_user_corrected
-            )
-            RETURNING slot_id, cellar_id, image_id, slot_index, label,
-                      polygon_json, bbox_json, center_x, center_y,
-                      status, confidence, is_active, is_user_corrected,
-                      created_at, updated_at
-        """),
-        {
-            "slot_id": slot_id,
-            "cellar_id": cellar_id,
-            "image_id": image_id,
-            "slot_index": slot_index,
-            "label": label,
-            "polygon_json": json.dumps(polygon_json),
-            "bbox_json": json.dumps(bbox_json),
-            "center_x": center_x,
-            "center_y": center_y,
-            "status": status,
-            "confidence": confidence,
-            "is_active": is_active,
-            "is_user_corrected": is_user_corrected,
-        },
-    ).fetchone()
-
-    if commit:
-        db.commit()
-
-    return _map_slot_row(row)
-
-
-def update_slot_geometry_with_commit_control(
-    db: Session,
-    slot_id: str,
-    polygon_json=None,
-    bbox_json=None,
-    label: str | None = None,
-    status: str | None = None,
     center_x: float | None = None,
     center_y: float | None = None,
     is_active: bool | None = None,
@@ -749,18 +608,14 @@ def update_slot_geometry_with_commit_control(
         """),
         {
             "slot_id": slot_id,
-            "polygon_json": json.dumps(polygon_json),
-            "bbox_json": json.dumps(bbox_json),
+            "polygon_json": json.dumps(polygon_json if polygon_json is not None else current["polygon_json"]),
+            "bbox_json": json.dumps(bbox_json if bbox_json is not None else current["bbox_json"]),
             "center_x": center_x,
             "center_y": center_y,
-            "label": label,
-            "status": status,
+            "label": label if label is not None else current["label"],
+            "status": status if status is not None else current["status"],
             "is_active": is_active if is_active is not None else current["is_active"],
-            "is_user_corrected": (
-                is_user_corrected
-                if is_user_corrected is not None
-                else current["is_user_corrected"]
-            ),
+            "is_user_corrected": is_user_corrected if is_user_corrected is not None else current["is_user_corrected"],
         },
     ).fetchone()
 
@@ -768,3 +623,170 @@ def update_slot_geometry_with_commit_control(
         db.commit()
 
     return _map_slot_row(row)
+
+
+def delete_slots_by_ids(db: Session, image_id: str, slot_ids: list[str], commit: bool = True):
+    if not slot_ids:
+        return 0
+
+    result = db.execute(
+        text("""
+            DELETE FROM cellar_slots
+            WHERE image_id = :image_id
+              AND slot_id = ANY(:slot_ids)
+        """),
+        {
+            "image_id": image_id,
+            "slot_ids": slot_ids,
+        },
+    )
+
+    if commit:
+        db.commit()
+
+    return result.rowcount
+
+
+# ── Wines ────────────────────────────────────────────────────────────────────
+
+def _map_wine_row(row):
+    if not row:
+        return None
+    return {
+        "wine_id": str(row[0]),
+        "user_id": str(row[1]),
+        "name":    row[2],
+        "winery":  row[3],
+        "varietal": row[4],
+        "vintage": row[5],
+        "region":  row[6],
+        "notes":   row[7],
+        "quantity": row[8],
+        "created_at": row[9].isoformat() if row[9] else None,
+        "updated_at": row[10].isoformat() if row[10] else None,
+    }
+
+
+def create_wine(
+    db: Session,
+    user_id: str,
+    winery: str,
+    varietal: str,
+    name: str | None = None,
+    vintage: int | None = None,
+    region: str | None = None,
+    notes: str | None = None,
+    quantity: int = 0,
+    commit: bool = True,
+):
+    wine_id = str(uuid.uuid4())
+    row = db.execute(
+        text("""
+            INSERT INTO wines (wine_id, user_id, name, winery, varietal, vintage, region, notes, quantity)
+            VALUES (:wine_id, :user_id, :name, :winery, :varietal, :vintage, :region, :notes, :quantity)
+            RETURNING wine_id, user_id, name, winery, varietal, vintage, region, notes, quantity, created_at, updated_at
+        """),
+        {
+            "wine_id": wine_id,
+            "user_id": user_id,
+            "name": name,
+            "winery": winery,
+            "varietal": varietal,
+            "vintage": vintage,
+            "region": region,
+            "notes": notes,
+            "quantity": quantity,
+        },
+    ).fetchone()
+
+    if commit:
+        db.commit()
+
+    return _map_wine_row(row)
+
+
+def get_wine_by_id(db: Session, wine_id: str):
+    row = db.execute(
+        text("""
+            SELECT wine_id, user_id, name, winery, varietal, vintage, region, notes, quantity, created_at, updated_at
+            FROM wines
+            WHERE wine_id = :wine_id
+        """),
+        {"wine_id": wine_id},
+    ).fetchone()
+    return _map_wine_row(row)
+
+
+def list_wines_by_user(db: Session, user_id: str):
+    rows = db.execute(
+        text("""
+            SELECT wine_id, user_id, name, winery, varietal, vintage, region, notes, quantity, created_at, updated_at
+            FROM wines
+            WHERE user_id = :user_id
+            ORDER BY winery ASC, varietal ASC
+        """),
+        {"user_id": user_id},
+    ).fetchall()
+    return [_map_wine_row(r) for r in rows]
+
+
+def update_wine(
+    db: Session,
+    wine_id: str,
+    name: str | None = None,
+    winery: str | None = None,
+    varietal: str | None = None,
+    vintage: int | None = None,
+    region: str | None = None,
+    notes: str | None = None,
+    quantity: int | None = None,
+    commit: bool = True,
+):
+    current = get_wine_by_id(db, wine_id)
+    if not current:
+        return None
+
+    row = db.execute(
+        text("""
+            UPDATE wines
+            SET name     = :name,
+                winery   = :winery,
+                varietal = :varietal,
+                vintage  = :vintage,
+                region   = :region,
+                notes    = :notes,
+                quantity = :quantity,
+                updated_at = NOW()
+            WHERE wine_id = :wine_id
+            RETURNING wine_id, user_id, name, winery, varietal, vintage, region, notes, quantity, created_at, updated_at
+        """),
+        {
+            "wine_id": wine_id,
+            "name":     name     if name     is not None else current["name"],
+            "winery":   winery   if winery   is not None else current["winery"],
+            "varietal": varietal if varietal is not None else current["varietal"],
+            "vintage":  vintage  if vintage  is not None else current["vintage"],
+            "region":   region   if region   is not None else current["region"],
+            "notes":    notes    if notes    is not None else current["notes"],
+            "quantity": quantity if quantity is not None else current["quantity"],
+        },
+    ).fetchone()
+
+    if commit:
+        db.commit()
+
+    return _map_wine_row(row)
+
+
+def delete_wine(db: Session, wine_id: str, commit: bool = True):
+    row = db.execute(
+        text("DELETE FROM wines WHERE wine_id = :wine_id RETURNING wine_id"),
+        {"wine_id": wine_id},
+    ).fetchone()
+
+    if commit:
+        db.commit()
+
+    return {"wine_id": str(row[0])} if row else None
+
+

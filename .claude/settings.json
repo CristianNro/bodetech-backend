@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git:*)", "Bash(docker:*)", "Bash(uvicorn:*)",
+      "Bash(python:*)", "Bash(pip:*)", "Bash(psql:*)",
+      "Read(**)",
+      "Write(backend/**)", "Write(main.py)"
+    ],
+    "deny": ["Write(.env)", "Bash(rm -rf *)"]
+  }
+}
